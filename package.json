@@ -11,19 +11,25 @@
     "test": "tsx --tsconfig tsconfig.test.json --env-file=.env.test test/index.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "type:check": "tsc --build --noEmit"
+    "lint": "eslint --fix .",
+    "lint:check": "eslint .",
+    "type:check": "tsc --build --noEmit",
+    "prepack": "npm run build"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
     "@types/node": "^26.6.2",
+    "eslint": "^10.14.0",
     "prettier": "^3.9.9",
     "prettier-plugin-jsdoc": "^1.8.1",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.2",
+    "vitest": "^5.1.0"
   },
   "dependencies": {
     "@neon/sdk": "^6.1.0",
-    "vitest": "^5.0.5",
     "zod": "^4.6.7"
   }
 }

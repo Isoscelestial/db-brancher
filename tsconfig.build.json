@@ -1,17 +1,10 @@
 {
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "declaration": true,
     "declarationMap": true,
-    "incremental": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
     "outDir": "./dist",
     "rootDir": "./src",
-    "resolveJsonModule": true,
-    "rewriteRelativeImportExtensions": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "target": "es2025",
     "types": ["node"],
     "paths": {
       "@/*": ["./src/*"]
