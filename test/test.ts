@@ -27,7 +27,7 @@ const userBranches = await brancher.user.getBranches(u);
 console.log(userBranches);
 
 // Get connection URL
-const uri = await brancher.user.getConnectionURL(u, 0);
+const uri = await brancher.user.getConnectionURL(u, 1);
 console.log('uri', uri);
 
 // Delete branch

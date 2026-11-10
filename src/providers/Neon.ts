@@ -1,4 +1,3 @@
-import env from '../../__tests__/env';
 import { createNeonClient, NeonClient } from '@neon/sdk';
 import { Branch, NeonError } from '@neon/sdk';
 import BranchProviderClient from './BranchProviderClient';
