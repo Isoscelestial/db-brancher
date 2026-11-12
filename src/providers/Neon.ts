@@ -1,7 +1,7 @@
 import { createNeonClient, NeonClient } from '@neon/sdk';
 import { Branch, NeonError } from '@neon/sdk';
 import BranchProviderClient from './BranchProviderClient';
-import { BranchRef, resolveBranchRef } from '@/identifiers/BranchIdentifier';
+import { BranchRef, resolveBranchRef } from '@/refs/BranchRef';
 
 export type NeonProviderClientConfig = {
   apiKey: string;

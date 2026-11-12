@@ -1,4 +1,4 @@
-import { BranchFields, BranchRef } from '@/identifiers/BranchIdentifier';
+import { BranchFields, BranchRef } from '@/refs/BranchRef';
 
 export default abstract class BranchProviderClient<
   BranchType extends BranchFields,

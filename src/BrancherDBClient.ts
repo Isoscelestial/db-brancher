@@ -1,6 +1,6 @@
 import { dev } from '@/utils/templates';
-import { BranchFields } from '@/identifiers/BranchIdentifier';
-import { UserIdentifier } from '@/identifiers/UserIdentifier';
+import { BranchFields } from '@/refs/BranchRef';
+import { UserIdentifier } from '@/refs/UserRef';
 import BranchProviderClient from '@/providers/BranchProviderClient';
 
 const slotRegex = /(?<=^[^\s]*#)\d+/;
