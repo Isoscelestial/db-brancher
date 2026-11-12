@@ -1,8 +1,5 @@
 import { dev } from '@/utils/templates';
-import {
-  BranchIdentifier,
-  BranchIdentifierFields,
-} from '@/identifiers/BranchIdentifier';
+import { BranchFields } from '@/identifiers/BranchIdentifier';
 import { UserIdentifier } from '@/identifiers/UserIdentifier';
 import BranchProviderClient from '@/providers/BranchProviderClient';
 
@@ -26,9 +23,7 @@ export type BrancherDBClientOptions = {
   nextUnusedSlotMethod?: 'smallest' | 'iterate';
 };
 
-export default class BrancherDBClient<
-  BranchType extends BranchIdentifierFields,
-> {
+export default class BrancherDBClient<BranchType extends BranchFields> {
   #providerClient: BranchProviderClient<BranchType>;
   #branchesCache: BranchType[];
   #cacheLastFetch: Date;
@@ -252,9 +247,7 @@ export default class BrancherDBClient<
         const newBranch = await this.branch.$raw.create(branchName);
 
         // Reset connection string to prevent branch from having same role password as parent branch
-        this.branch.$raw.resetConnectionURL(
-          new BranchIdentifier({ id: newBranch.id }),
-        );
+        this.branch.$raw.resetConnectionURL({ id: newBranch.id });
 
         this.$util.invalidateCache();
 
@@ -280,9 +273,9 @@ export default class BrancherDBClient<
           note,
           nextUnusedSlotMethod,
         );
-        const newBranchIdentifier = new BranchIdentifier({ id: newBranch.id });
-        const uri =
-          await this.branch.$raw.getConnectionURL(newBranchIdentifier);
+        const uri = await this.branch.$raw.getConnectionURL({
+          id: newBranch.id,
+        });
         return uri;
       },
 
@@ -304,9 +297,9 @@ export default class BrancherDBClient<
           throw new Error(`Could not find branch at slot ${slot}`);
         }
 
-        const uri = await this.branch.$raw.getConnectionURL(
-          new BranchIdentifier({ id: targetBranch.id }),
-        );
+        const uri = await this.branch.$raw.getConnectionURL({
+          id: targetBranch.id,
+        });
 
         return uri;
       },
@@ -325,9 +318,7 @@ export default class BrancherDBClient<
           throw new Error(`Could not find branch at slot ${slot}`);
         }
 
-        return await this.branch.$raw.delete(
-          new BranchIdentifier({ id: targetBranch.id }),
-        );
+        return await this.branch.$raw.delete({ id: targetBranch.id });
       },
     };
   }

@@ -1,7 +1,7 @@
 import { createNeonClient, NeonClient } from '@neon/sdk';
 import { Branch, NeonError } from '@neon/sdk';
 import BranchProviderClient from './BranchProviderClient';
-import { BranchIdentifier } from '@/identifiers/BranchIdentifier';
+import { BranchRef, resolveBranchRef } from '@/identifiers/BranchIdentifier';
 
 export type NeonProviderClientConfig = {
   apiKey: string;
@@ -67,8 +67,9 @@ export default class NeonProviderClient extends BranchProviderClient<Branch> {
     return newBranch;
   }
 
-  async delete(branchIdentifier: BranchIdentifier): Promise<void> {
-    const branchId = await branchIdentifier.getId(this.getAll);
+  async delete(branchRef: BranchRef): Promise<void> {
+    const branchRefObject = resolveBranchRef(branchRef);
+    const branchId = await branchRefObject.getId(this.getAll);
     const { error: deleteError } = await this.neonClient.branches.delete({
       projectId: this.projectId,
       branchId: branchId,
@@ -76,8 +77,9 @@ export default class NeonProviderClient extends BranchProviderClient<Branch> {
     if (deleteError) throw deleteError;
   }
 
-  async resetConnectionURL(branchIdentifier: BranchIdentifier) {
-    const branchId = await branchIdentifier.getId(this.getAll);
+  async resetConnectionURL(branchRef: BranchRef) {
+    const branchRefObject = resolveBranchRef(branchRef);
+    const branchId = await branchRefObject.getId(this.getAll);
     const { error: resetPasswordError } =
       await this.neonClient.postgres.roles.resetPassword({
         projectId: this.projectId,
@@ -96,10 +98,11 @@ export default class NeonProviderClient extends BranchProviderClient<Branch> {
   }
 
   async getConnectionURL(
-    branchIdentifier: BranchIdentifier,
+    branchRef: BranchRef,
     pooled: boolean,
   ): Promise<string> {
-    const branchId = await branchIdentifier.getId(this.getAll);
+    const branchRefObject = resolveBranchRef(branchRef);
+    const branchId = await branchRefObject.getId(this.getAll);
     const { data: uri } = await this.neonClient.postgres.connectionString({
       projectId: this.projectId,
       databaseName: 'neondb',

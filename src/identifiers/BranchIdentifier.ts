@@ -1,26 +1,49 @@
 import { OnlyOneRequired } from '@/utils/types';
 
-export type BranchIdentifierFields = {
+/** Either an object of fields or a class instance that refer to a branch */
+export type BranchRef = BranchRefObject | OnlyOneRequired<BranchFields>;
+
+/**
+ * Resolves a branch ref, which may either be an object of fields or a class instance, to a class instance
+ *
+ * @param branchRef The branch ref
+ * @returns A class instance for a branch
+ */
+export function resolveBranchRef(branchRef: BranchRef): BranchRefObject {
+  if (branchRef instanceof BranchRefObject) {
+    return branchRef;
+  } else {
+    return new BranchRefObject(branchRef);
+  }
+}
+
+/** An object of fields that refer to a branch */
+export type BranchFields = {
   id: string;
   name: string;
 };
 
-export function branch(identifier: OnlyOneRequired<BranchIdentifierFields>) {
-  return new BranchIdentifier(identifier);
-}
+/**
+ * An object constructed from {@linkcode BranchFields} that provides utility methods for delaying data fetching until the
+ * last possible moment.
+ */
+export class BranchRefObject {
+  #id: BranchFields['id'] | undefined;
+  #name: BranchFields['name'] | undefined;
 
-export class BranchIdentifier {
-  #id: BranchIdentifierFields['id'] | undefined;
-  #name: BranchIdentifierFields['name'] | undefined;
+  constructor(fields: OnlyOneRequired<BranchFields>) {
+    this.#id = fields.id;
+    this.#name = fields.name;
+  }
 
-  constructor(identifier: OnlyOneRequired<BranchIdentifierFields>) {
-    this.#id = identifier.id;
-    this.#name = identifier.name;
+  /** Static method that functions as a copy constructor for either a ref object or default constructor fields. */
+  static copyFrom(branchRef: BranchRef): BranchRefObject {
+    return resolveBranchRef(branchRef);
   }
 
   async getId(
-    getBranches: () => Promise<BranchIdentifierFields[]>,
-  ): Promise<BranchIdentifierFields['id']> {
+    getBranches: () => Promise<BranchFields[]>,
+  ): Promise<BranchFields['id']> {
     if (this.#id) {
       return this.#id;
     } else if (this.#name) {
@@ -35,8 +58,8 @@ export class BranchIdentifier {
   }
 
   async getName(
-    getBranches: () => Promise<BranchIdentifierFields[]>,
-  ): Promise<BranchIdentifierFields['name']> {
+    getBranches: () => Promise<BranchFields[]>,
+  ): Promise<BranchFields['name']> {
     if (this.#name) {
       return this.#name;
     } else if (this.#id) {
@@ -47,5 +70,20 @@ export class BranchIdentifier {
       return result;
     }
     throw new Error('Could not find name of branch');
+  }
+
+  /**
+   * Calls the getters for every ref field ahead of time, since getters may be asyncronous.
+   *
+   * @param getBranches Callback function that returns a searchable array of all branches
+   * @returns A promise of an array with every ref field
+   */
+  prefill(getBranches: () => Promise<BranchFields[]>) {
+    return Promise.all([this.getId(getBranches), this.getName(getBranches)]);
+  }
+
+  /** Whether every field has been filled */
+  isFilled(): boolean {
+    return Boolean(this.#id) && Boolean(this.#name);
   }
 }
