@@ -10,11 +10,9 @@ export type BranchRef = BranchRefObject | OnlyOneRequired<BranchFields>;
  * @returns A class instance for a branch
  */
 export function resolveBranchRef(branchRef: BranchRef): BranchRefObject {
-  if (branchRef instanceof BranchRefObject) {
-    return branchRef;
-  } else {
-    return new BranchRefObject(branchRef);
-  }
+  return branchRef instanceof BranchRefObject
+    ? branchRef
+    : new BranchRefObject(branchRef);
 }
 
 /** An object of fields that refer to a branch */
@@ -28,26 +26,27 @@ export type BranchFields = {
  * last possible moment.
  */
 export class BranchRefObject {
-  #id: BranchFields['id'] | undefined;
-  #name: BranchFields['name'] | undefined;
+  #fields: OnlyOneRequired<BranchFields>;
 
   constructor(fields: OnlyOneRequired<BranchFields>) {
-    this.#id = fields.id;
-    this.#name = fields.name;
+    this.#fields = fields;
   }
 
   /** Static method that functions as a copy constructor for either a ref object or default constructor fields. */
   static copyFrom(branchRef: BranchRef): BranchRefObject {
-    return resolveBranchRef(branchRef);
+    return branchRef instanceof BranchRefObject
+      ? new this(branchRef.#fields)
+      : new BranchRefObject(branchRef);
   }
 
   async getId(
     getBranches: () => Promise<BranchFields[]>,
   ): Promise<BranchFields['id']> {
-    if (this.#id) {
-      return this.#id;
-    } else if (this.#name) {
-      const targetName = this.#name;
+    const fields = this.#fields;
+    if (fields.id) {
+      return fields.id;
+    } else if (fields.name) {
+      const targetName = fields.name;
       const branchesList = await getBranches();
       const result = branchesList.find((b) => b.name === targetName)?.id;
       if (!result)
@@ -60,10 +59,11 @@ export class BranchRefObject {
   async getName(
     getBranches: () => Promise<BranchFields[]>,
   ): Promise<BranchFields['name']> {
-    if (this.#name) {
-      return this.#name;
-    } else if (this.#id) {
-      const targetId = this.#id;
+    const fields = this.#fields;
+    if (fields.name) {
+      return fields.name;
+    } else if (fields.id) {
+      const targetId = fields.id;
       const branchesList = await getBranches();
       const result = branchesList.find((b) => b.id === targetId)?.name;
       if (!result) throw new Error(`Could not find branch with ID ${targetId}`);
@@ -84,6 +84,6 @@ export class BranchRefObject {
 
   /** Whether every field has been filled */
   isFilled(): boolean {
-    return Boolean(this.#id) && Boolean(this.#name);
+    return Object.values(this.#fields).every(Boolean);
   }
 }

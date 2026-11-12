@@ -1,6 +1,6 @@
 import { dev } from '@/utils/templates';
 import { BranchFields } from '@/refs/BranchRef';
-import { UserIdentifier } from '@/refs/UserRef';
+import { resolveUserRef, UserRef } from '@/refs/UserRef';
 import BranchProviderClient from '@/providers/BranchProviderClient';
 
 const slotRegex = /(?<=^[^\s]*#)\d+/;
@@ -75,13 +75,12 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
       /**
        * Gets the branch slots that a user has used
        *
-       * @param userIdentifier Target user
+       * @param userRef Target user
        * @returns An array of numbers, each corresponding to a branch slot that has been used
        */
-      getUsedSlotsForUser: async (
-        userIdentifier: UserIdentifier,
-      ): Promise<number[]> => {
-        const userBranches = await this.user.getBranches(userIdentifier);
+      getUsedSlotsForUser: async (userRef: UserRef): Promise<number[]> => {
+        const userRefObject = resolveUserRef(userRef);
+        const userBranches = await this.user.getBranches(userRefObject);
 
         const usedSlots: number[] = userBranches.reduce((acc, current) => {
           const slotNumber = this.$util.getBranchSlot(current.name);
@@ -95,16 +94,16 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
       /**
        * Gets the next available branch slot for a user
        *
-       * @param userIdentifier Target user
+       * @param userRef Target user
        * @param nextUnusedSlotMethod Method for choosing the next unused user branch slot (defaults to the value from
        *   the client instance)
        * @returns A number corresponding to an unused branch slot
        */
       getNextUnusedSlotForUser: async (
-        userIdentifier: UserIdentifier,
+        userRef: UserRef,
         nextUnusedSlotMethod?: BrancherDBClientOptions['nextUnusedSlotMethod'],
       ): Promise<number> => {
-        const usedSlots = await this.$util.getUsedSlotsForUser(userIdentifier);
+        const usedSlots = await this.$util.getUsedSlotsForUser(userRef);
         const method =
           nextUnusedSlotMethod ??
           this.#options.nextUnusedSlotMethod ??
@@ -165,15 +164,15 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
       /**
        * Gets the list of branches belonging to a user
        *
-       * @param userIdentifier Target user
+       * @param userRef Target user
        * @returns An array of branches belonging to that user
        */
-      getBranches: async (
-        userIdentifier: UserIdentifier,
-      ): Promise<BranchType[]> => {
+      getBranches: async (userRef: UserRef): Promise<BranchType[]> => {
+        const userRefObject = resolveUserRef(userRef);
+
         const allBranches = await this.branch.getAll();
 
-        const githubUsername = await userIdentifier.getGitHubUsername();
+        const githubUsername = await userRefObject.getGitHubUsername();
 
         const branchName = dev(githubUsername.toLowerCase());
         const escapedBranchName = branchName.replace(
@@ -194,15 +193,15 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
       /**
        * Gets the branch in the specified slot belonging to a user
        *
-       * @param userIdentifier Target user
+       * @param userRef Target user
        * @param slot Target slot
        * @returns A branch belonging to that user
        */
       getBranch: async (
-        userIdentifier: UserIdentifier,
+        userRef: UserRef,
         slot: number,
       ): Promise<BranchType> => {
-        const userBranches = await this.user.getBranches(userIdentifier);
+        const userBranches = await this.user.getBranches(userRef);
 
         const branch = userBranches.find((branch) => {
           const slotNumber = this.$util.getBranchSlot(branch.name);
@@ -211,7 +210,7 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
 
         if (!branch) {
           throw new Error(
-            `Could not find branch at slot ${slot} for user identified by ${userIdentifier.toString()}`,
+            `Could not find branch at slot ${slot} for user identified by ${userRef.toString()}`,
           );
         }
 
@@ -221,20 +220,21 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
       /**
        * Creates a new database branch for a user
        *
-       * @param userIdentifier Target user
+       * @param userRef Target user
        * @param note Short description explaining purpose of the branch
        * @param nextUnusedSlotMethod Method for choosing the next unused user branch slot (defaults to the value from
        *   this class's instance)
        * @returns The new database branch
        */
       createBranch: async (
-        userIdentifier: UserIdentifier,
+        userRef: UserRef,
         note?: string,
         nextUnusedSlotMethod?: BrancherDBClientOptions['nextUnusedSlotMethod'],
       ): Promise<BranchType> => {
-        const githubUsername = await userIdentifier.getGitHubUsername();
+        const userRefObject = resolveUserRef(userRef);
+        const githubUsername = await userRefObject.getGitHubUsername();
         const nextUnusedSlot = await this.$util.getNextUnusedSlotForUser(
-          userIdentifier,
+          userRef,
           nextUnusedSlotMethod,
         );
 
@@ -257,19 +257,19 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
       /**
        * Creates a new database branch for a user and returns its connection string
        *
-       * @param userIdentifier Target user
+       * @param userRef Target user
        * @param note Short description explaining purpose of the branch
        * @param nextUnusedSlotMethod Method for choosing the next unused user branch slot (defaults to the value from
        *   this class's instance)
        * @returns The database connection URL string
        */
       createBranchAndConnect: async (
-        userIdentifier: UserIdentifier,
+        userRef: UserRef,
         note?: string,
         nextUnusedSlotMethod?: BrancherDBClientOptions['nextUnusedSlotMethod'],
       ): Promise<string> => {
         const newBranch = await this.user.createBranch(
-          userIdentifier,
+          userRef,
           note,
           nextUnusedSlotMethod,
         );
@@ -282,17 +282,17 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
       /**
        * Gets the database connection URL for a user's branch at a specified slot
        *
-       * @param userIdentifier Target user
+       * @param userRef Target user
        * @param slot Integer corresponding to the target slot
        * @returns {string} The database connection URL string
        */
       getConnectionURL: async (
-        userIdentifier: UserIdentifier,
+        userRef: UserRef,
         slot: number,
       ): Promise<string> => {
-        this.user.getBranches(userIdentifier);
+        this.user.getBranches(userRef);
 
-        const targetBranch = await this.user.getBranch(userIdentifier, slot);
+        const targetBranch = await this.user.getBranch(userRef, slot);
         if (!targetBranch) {
           throw new Error(`Could not find branch at slot ${slot}`);
         }
@@ -307,13 +307,13 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
       /**
        * Deletes a user's database branch at a specified slot
        *
-       * @param userIdentifier Target user
+       * @param userRef Target user
        * @param slot Integer corresponding to the target slot
        */
-      deleteBranch: async (userIdentifier: UserIdentifier, slot: number) => {
-        this.user.getBranches(userIdentifier);
+      deleteBranch: async (userRef: UserRef, slot: number) => {
+        this.user.getBranches(userRef);
 
-        const targetBranch = await this.user.getBranch(userIdentifier, slot);
+        const targetBranch = await this.user.getBranch(userRef, slot);
         if (!targetBranch) {
           throw new Error(`Could not find branch at slot ${slot}`);
         }
