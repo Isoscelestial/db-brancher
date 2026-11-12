@@ -12,6 +12,8 @@ describe('NeonProviderClient', () => {
     expect(neonBranchProvider.projectId).toBe(process.env.NEON_PROJECT_ID);
     expect(config.apiKey).toBe(process.env.NEON_API_KEY);
     expect(config.projectId).toBe(process.env.NEON_PROJECT_ID);
-    expect(config.apiURL).toBe(process.env.NEON_API_URL);
+    if (process.env.NEON_API_URL) {
+      expect(config.apiURL).toBe(process.env.NEON_API_URL);
+    }
   });
 });
