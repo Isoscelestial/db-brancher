@@ -45,6 +45,7 @@ jobs:
     name: Run tests
     needs: [get-matrix]
     runs-on: ${{ matrix.os }}
+    environment: CI
 
     strategy:
       fail-fast: false
@@ -62,8 +63,14 @@ jobs:
           cache: 'npm'
       - name: npm clean install
         run: npm ci
-      - name: Run tests
+      - name: Create .env.test
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+        run: |
+          cat <<EOF > .env.test
+          NEON_API_KEY='$NEON_API_KEY'
+          NEON_PROJECT_ID='$NEON_PROJECT_ID'
+          EOF
+      - name: Run tests
         run: node --run test
