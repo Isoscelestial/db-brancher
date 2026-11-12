@@ -1,8 +1,7 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "./tsconfig.app.json",
   "compilerOptions": {
     "types": ["node", "vitest/globals"]
   },
-  "include": ["./test/**/*"],
-  "references": [{ "path": "./tsconfig.json" }]
+  "include": ["./src/**/*", "./test/**/*"]
 }
