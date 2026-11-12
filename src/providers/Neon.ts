@@ -20,7 +20,8 @@ export default class NeonProviderClient extends BranchProviderClient<Branch> {
 
     this.projectId = config.projectId;
     this.neonClient =
-      config.neonClient ?? createNeonClient({ apiKey: config.apiKey });
+      config.neonClient ??
+      createNeonClient({ apiKey: config.apiKey, baseUrl: config.apiURL });
 
     this.config = config;
     this.config.apiURL ??= 'https://console.neon.tech/api/v2';

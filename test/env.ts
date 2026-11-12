@@ -13,12 +13,33 @@ type EnvSchema = z.infer<typeof envSchema>;
 
 const env: EnvSchema = {} as EnvSchema;
 
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error;
+}
+
 /**
- * Run once to initialize {@linkcode env}. Also validates environment varisbles and kills the program if environment
- * variables don't match the schema defined by {@linkcode envSchema}
+ * Global setup function for Vitest
+ *
+ * @see https://vitest.dev/config/globalsetup
  */
-export function initializeEnvironment() {
-  console.log('→ Initializing environment variables...');
+export default function setup() {
+  try {
+    process.loadEnvFile('.env.test');
+  } catch (error) {
+    if (isNodeError(error)) {
+      switch (error.code) {
+        case 'ENOENT':
+          console.error('❌ Missing .env.test file (tests will be skipped)');
+          break;
+        default:
+          console.error('Failed to load environment variables:', error);
+          break;
+      }
+      process.exit(1);
+    } else {
+      throw error;
+    }
+  }
 
   const parsed = envSchema.safeParse(process.env);
 
@@ -32,29 +53,12 @@ export function initializeEnvironment() {
       errorString += `\n • ${key} - ${value.errors.join('; ')}`;
     }
 
-    console.error('\n❌ Invalid environment variables:', errorString);
+    console.error(
+      '❌ Invalid environment variables (tests will be skipped):',
+      errorString,
+    );
     process.exit(1);
   }
-}
 
-/**
- * Whether a specific environment variable is in the environment, since some variables may be missing due to being
- * optional.
- */
-export function hasEnvVar(envVarKey: keyof EnvSchema): boolean {
-  return envVarKey in env;
+  return function teardown() {};
 }
-
-/**
- * Requires a specific environment variable to be defined, since some variables may be missing due to being optional.
- * Throws an error if it is missing.
- */
-export function requireEnvVar(envVarKey: keyof EnvSchema) {
-  if (!(envVarKey in env))
-    throw new Error(
-      `This requires an environment variable that is missing: ${envVarKey}`,
-    );
-  return env[envVarKey];
-}
-
-export default env;

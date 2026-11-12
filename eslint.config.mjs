@@ -12,6 +12,8 @@ export default defineConfig([
   ...tseslint.configs.recommended,
   {
     files: ['**/*.{js,ts}'],
-    rules: {},
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'warn',
+    },
   },
 ]);

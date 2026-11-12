@@ -8,7 +8,7 @@
   "main": "src/index.ts",
   "scripts": {
     "build": "tsc --build",
-    "test": "tsx --tsconfig tsconfig.test.json --env-file=.env.test test/index.ts",
+    "test": "vitest --mode test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint --fix .",
