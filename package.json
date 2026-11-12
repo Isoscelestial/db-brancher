@@ -5,7 +5,11 @@
   "license": "MIT",
   "author": "isoscelestial",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc --build tsconfig.build.json",
     "test": "vitest --mode test",
