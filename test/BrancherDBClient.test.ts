@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import BrancherDBClient from '@/BrancherDBClient';
-import { neonBranchProvider } from './NeonProviderClient.test';
+import { neonBranchProvider } from './providers/Neon.test';
 import { UserRef } from '@/refs/UserRef';
 import { Branch } from '@neon/sdk';
 
