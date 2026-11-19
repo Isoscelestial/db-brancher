@@ -313,6 +313,15 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
 
         return await this.branch.$raw.delete({ id: targetBranch.id });
       },
+
+      resetBranchFromParent: async (userRef: UserRef, slot: number) => {
+        const targetBranch = await this.user.getBranch(userRef, slot);
+        if (!targetBranch) {
+          throw new Error(`Could not find branch at slot ${slot}`);
+        }
+
+        return await this.branch.$raw.resetFromParent(targetBranch);
+      },
     };
   }
 }

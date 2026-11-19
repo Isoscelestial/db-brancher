@@ -43,4 +43,12 @@ export default abstract class BranchProviderClient<
     branchRef: BranchRef,
     pooled?: boolean,
   ): Promise<string>;
+
+  /**
+   * Reset a database branch to the latest data from its parent branch. Useful for resetting a branch without deleting
+   * and creating a new branch, which generates a new connection URL.
+   *
+   * @param branchRef Target branch
+   */
+  abstract resetFromParent(branchRef: BranchRef): Promise<BranchType | void>;
 }

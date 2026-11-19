@@ -40,6 +40,14 @@ describe('BrancherDBClient using Neon', () => {
     );
   });
 
+  test('Reset from parent', async () => {
+    // TODO: Make change in parent branch
+    // TODO: Make new branch
+    const result = await brancher.user.resetBranchFromParent(u, 1);
+    // TODO: Check if new branch has aforementioned change
+    expectTypeOf(result).toExtend<Branch | void>();
+  });
+
   test('Delete branch', async () => {
     await brancher.user.deleteBranch(u, 1);
 

@@ -119,4 +119,22 @@ export default class NeonProviderClient extends BranchProviderClient<Branch> {
 
     return uri;
   }
+
+  async resetFromParent(branchRef: BranchRef): Promise<Branch> {
+    const branchRefObject = resolveBranchRef(branchRef);
+    const branchId = await branchRefObject.getId(this.getAll);
+
+    const { data, error } = await this.neonClient.branches.resetFromParent({
+      projectId: this.projectId,
+      branchId: branchId,
+    });
+
+    if (error) {
+      throw new Error(
+        `There was an error resetting the branch with ID ${branchId} from its parent:\n${error.message}`,
+      );
+    }
+
+    return data;
+  }
 }
