@@ -2,8 +2,7 @@ import { dev } from '@/utils/templates';
 import { BranchFields } from '@/refs/BranchRef';
 import { resolveUserRef, UserRef } from '@/refs/UserRef';
 import BranchProviderClient from '@/providers/BranchProviderClient';
-
-const slotRegex = /(?<=^[^\s]*#)\d+/;
+import { constructAllUserBranchesRegex, slotRegex } from '@/utils/regex';
 
 export type BrancherDBClientOptions = {
   /**
@@ -174,14 +173,8 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
 
         const githubUsername = await userRefObject.getGitHubUsername();
 
-        const branchName = dev(githubUsername.toLowerCase());
-        const escapedBranchName = branchName.replace(
-          /[.*+?^${}()|[\]\\]/g,
-          '\\$&',
-        );
-        const allPersonBranchesRegex = new RegExp(
-          `^${escapedBranchName}(?=[# ]+|$)`,
-        );
+        const allPersonBranchesRegex =
+          constructAllUserBranchesRegex(githubUsername);
 
         const userBranches = allBranches.filter((branch) =>
           allPersonBranchesRegex.test(branch.name.toLowerCase()),

@@ -1,7 +1,3 @@
-/** Matches a valid GitHub username */
-export const GitHubUsernameRegex =
-  /^[a-zA-Z\d](?:[a-zA-Z\d]|-(?=[a-zA-Z\d])){0,38}$/;
-
 /**
  * Constructs the branch name belonging to a particular GitHub username
  *
