@@ -62,7 +62,7 @@ const initialUsedSlots: BranchSlot<'nested'>[] = [
   [8, 1],
 ] as const;
 
-const u: UserRef = { githubUsername: 'user' };
+const u: UserRef = { name: 'user' };
 
 describe('Slot utilities w/ global syntax', () => {
   const memoryBranchProvider = new MockProviderClient({

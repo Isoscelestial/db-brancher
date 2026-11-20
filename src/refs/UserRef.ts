@@ -18,7 +18,7 @@ export function resolveUserRef(userRef: UserRef): UserRefObject {
 /** An object of fields that refer to a user */
 export type UserFields = {
   id: string;
-  githubUsername: string;
+  name: string;
 };
 
 /**
@@ -44,10 +44,10 @@ export class UserRefObject {
     }
   }
 
-  async getGitHubUsername(): Promise<UserFields['githubUsername']> {
+  async getName(): Promise<UserFields['name']> {
     const fields = this.#fields;
-    if (fields.githubUsername) {
-      return fields.githubUsername;
+    if (fields.name) {
+      return fields.name;
     } else {
       // TODO: Search user database using user's ID and return their GitHub username
       throw new Error('Not implemented: Identifying a user with their ID');

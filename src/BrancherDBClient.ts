@@ -260,10 +260,10 @@ export default class BrancherDBClient<
 
         const allBranches = await this.branch.getAll();
 
-        const githubUsername = await userRefObject.getGitHubUsername();
+        const userName = await userRefObject.getName();
 
         const allPersonBranchesRegex =
-          constructAllUserBranchesRegex(githubUsername);
+          constructAllUserBranchesRegex(userName);
 
         const userBranches = allBranches.filter((branch) =>
           allPersonBranchesRegex.test(branch.name.toLowerCase()),
@@ -314,14 +314,14 @@ export default class BrancherDBClient<
         nextUnusedSlotMethod?: BrancherDBClientOptions['nextUnusedSlotMethod'],
       ): Promise<BranchType> => {
         const userRefObject = resolveUserRef(userRef);
-        const githubUsername = await userRefObject.getGitHubUsername();
+        const userName = await userRefObject.getName();
         const nextUnusedSlot = await this.$util.getNextUnusedSlotForUser(
           userRef,
           { nextUnusedSlotMethod },
         );
 
         const branchName = dev(
-          githubUsername.toLowerCase(),
+          userName.toLowerCase(),
           nextUnusedSlot,
           note,
         );

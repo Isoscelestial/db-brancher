@@ -8,7 +8,7 @@ describe('BrancherDBClient using Neon', () => {
   const brancher = new BrancherDBClient(neonBranchProvider);
 
   const username = `vitest-${randomUUID()}`;
-  const u: UserRef = { githubUsername: username };
+  const u: UserRef = { name: username };
 
   test('Fetch branches', async () => {
     const branches = await brancher.branch.getAll();
