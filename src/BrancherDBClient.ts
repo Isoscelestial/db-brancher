@@ -213,6 +213,85 @@ export default class BrancherDBClient<
         }
         return nextUnusedSlotForTier;
       },
+
+      /**
+       * Fetches the parent branch of a branch given its slot using nested syntax.
+       *
+       * @param userRef Target user
+       * @param slot Slot of target branch
+       * @returns A branch that is the parent of the target branch
+       */
+      getParentBranch: async (
+        userRef: UserRef,
+        slot: BranchSlot,
+      ): Promise<BranchType | undefined> => {
+        const parentSlot = await this.$util.getParentSlot(userRef, slot);
+
+        if (!parentSlot) return undefined;
+
+        return await this.user.getBranch(userRef, parentSlot);
+      },
+
+      /**
+       * Fetches the slot of a branch's parent given its slot using nested syntax.
+       *
+       * @param userRef Target user
+       * @param slot Slot of target branch
+       * @returns The slot of the target branch's parent
+       */
+      getParentSlot: async (
+        userRef: UserRef,
+        slot: BranchSlot,
+      ): Promise<BranchSlot | undefined> => {
+        const syntax = this.#options.slotSyntax ?? 'nested';
+        if (syntax === 'global') {
+          console.error(
+            `Cannot find the parent of the branch at slot ${slot} for user ${JSON.stringify(userRef)} when using the global slot syntax`,
+          );
+          return undefined;
+        }
+
+        const slotArray = typeof slot === 'number' ? [slot] : slot;
+        slotArray.pop();
+
+        if (slotArray.length === 0) return undefined;
+
+        return slotArray;
+      },
+
+      /**
+       * Fetches child branches of a parent branch given its slot using nested syntax.
+       *
+       * @param userRef Target user
+       * @param slot Slot of target branch
+       * @returns An array of slots that correspond to child branches of the target branch
+       */
+      getChildSlots: async (
+        userRef: UserRef,
+        slot: BranchSlot,
+      ): Promise<BranchSlot[] | undefined> => {
+        const syntax = this.#options.slotSyntax ?? 'nested';
+        if (syntax === 'global') {
+          console.error(
+            `Cannot find children of the branch at slot ${slot} for user ${JSON.stringify(userRef)} when using the global slot syntax`,
+          );
+          return undefined;
+        }
+
+        const slotArray = typeof slot === 'number' ? [slot] : slot;
+
+        const allUsedSlots = await this.$util.getUsedSlotsForUser(userRef);
+        const allNestedUsedSlots = allUsedSlots as BranchSlot<'nested'>[];
+        const childrenSlots = allNestedUsedSlots.flatMap((slot) =>
+          arrayStartsWith(slot, slotArray)
+            ? slot.toSpliced(0, slotArray.length)
+            : [],
+        );
+
+        if (childrenSlots.length === 0) return undefined;
+
+        return childrenSlots;
+      },
     };
   }
 
@@ -275,7 +354,7 @@ export default class BrancherDBClient<
        * Gets the branch in the specified slot belonging to a user
        *
        * @param userRef Target user
-       * @param slot Target slot
+       * @param slot Slot of target branch
        * @returns A branch belonging to that user
        */
       getBranch: async (
@@ -432,5 +511,6 @@ export type CreateBranchOptions = {
   note?: string;
   /** Method for choosing the next unused user branch slot (defaults to the value from this class's instance) */
   nextUnusedSlotMethod?: BrancherDBClientOptions['nextUnusedSlotMethod'];
+  /** Uses this branch as the parent of the created branch (as a source for initial data) */
   parentSlot?: BranchSlot;
 };
