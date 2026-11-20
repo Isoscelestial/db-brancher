@@ -57,11 +57,17 @@ export default class NeonProviderClient extends BranchProviderClient<Branch> {
     return branches;
   }
 
-  async create(branchName: string): Promise<Branch> {
+  async create(branchName: string, parentBranch?: BranchRef): Promise<Branch> {
+    const parentBranchRefObject = parentBranch
+      ? resolveBranchRef(parentBranch)
+      : undefined;
+    const parentBranchId = await parentBranchRefObject?.getId(this.getAll);
+
     const { data: newBranch, error: createError } =
       await this.neonClient.branches.create({
         projectId: this.projectId,
         name: branchName,
+        parent_id: parentBranchId,
       });
     if (createError) throw createError;
     return newBranch;

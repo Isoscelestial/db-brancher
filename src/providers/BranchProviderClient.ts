@@ -15,7 +15,10 @@ export default abstract class BranchProviderClient<
    *
    * @param branchName Target branch
    */
-  abstract create(branchName: string): Promise<BranchType>;
+  abstract create(
+    branchName: string,
+    parentBranch?: BranchRef,
+  ): Promise<BranchType>;
 
   /**
    * Deletes a database branch

@@ -1,5 +1,5 @@
 import { dev } from '@/utils/templates';
-import { BranchFields } from '@/refs/BranchRef';
+import { BranchFields, BranchRef } from '@/refs/BranchRef';
 import { resolveUserRef, UserRef } from '@/refs/UserRef';
 import BranchProviderClient from '@/providers/BranchProviderClient';
 import { constructAllUserBranchesRegex, slotRegex } from '@/utils/regex';
@@ -262,8 +262,7 @@ export default class BrancherDBClient<
 
         const userName = await userRefObject.getName();
 
-        const allPersonBranchesRegex =
-          constructAllUserBranchesRegex(userName);
+        const allPersonBranchesRegex = constructAllUserBranchesRegex(userName);
 
         const userBranches = allBranches.filter((branch) =>
           allPersonBranchesRegex.test(branch.name.toLowerCase()),
@@ -303,30 +302,49 @@ export default class BrancherDBClient<
        * Creates a new database branch for a user
        *
        * @param userRef Target user
-       * @param note Short description explaining purpose of the branch
-       * @param nextUnusedSlotMethod Method for choosing the next unused user branch slot (defaults to the value from
-       *   this class's instance)
+       * @param options Optional configurations related to creating a database branch
        * @returns The new database branch
        */
       createBranch: async (
         userRef: UserRef,
-        note?: string,
-        nextUnusedSlotMethod?: BrancherDBClientOptions['nextUnusedSlotMethod'],
+        options?: CreateBranchOptions,
       ): Promise<BranchType> => {
         const userRefObject = resolveUserRef(userRef);
         const userName = await userRefObject.getName();
+        const parentSlot =
+          typeof options?.parentSlot === 'number'
+            ? [options?.parentSlot]
+            : options?.parentSlot;
+
         const nextUnusedSlot = await this.$util.getNextUnusedSlotForUser(
           userRef,
-          { nextUnusedSlotMethod },
+          {
+            parentSlot,
+            nextUnusedSlotMethod: options?.nextUnusedSlotMethod,
+          },
         );
+
+        let parentBranch: BranchRef | undefined = undefined;
+
+        if (parentSlot) {
+          parentBranch = await this.user.getBranch(userRef, parentSlot);
+          if (!parentBranch) {
+            throw new Error(
+              `Could not find parent branch at slot ${parentSlot}`,
+            );
+          }
+        }
 
         const branchName = dev(
           userName.toLowerCase(),
           nextUnusedSlot,
-          note,
+          options?.note,
         );
 
-        const newBranch = await this.branch.$raw.create(branchName);
+        const newBranch = await this.branch.$raw.create(
+          branchName,
+          parentBranch,
+        );
 
         // Reset connection string to prevent branch from having same role password as parent branch
         this.branch.$raw.resetConnectionURL({ id: newBranch.id });
@@ -340,21 +358,14 @@ export default class BrancherDBClient<
        * Creates a new database branch for a user and returns its connection string
        *
        * @param userRef Target user
-       * @param note Short description explaining purpose of the branch
-       * @param nextUnusedSlotMethod Method for choosing the next unused user branch slot (defaults to the value from
-       *   this class's instance)
+       * @param options Optional configurations related to creating a database branch
        * @returns The database connection URL string
        */
       createBranchAndConnect: async (
         userRef: UserRef,
-        note?: string,
-        nextUnusedSlotMethod?: BrancherDBClientOptions['nextUnusedSlotMethod'],
+        options?: CreateBranchOptions,
       ): Promise<string> => {
-        const newBranch = await this.user.createBranch(
-          userRef,
-          note,
-          nextUnusedSlotMethod,
-        );
+        const newBranch = await this.user.createBranch(userRef, options);
         const uri = await this.branch.$raw.getConnectionURL({
           id: newBranch.id,
         });
@@ -414,3 +425,12 @@ export default class BrancherDBClient<
     };
   }
 }
+
+/** Optional configurations for methods involving creating a database branch */
+export type CreateBranchOptions = {
+  /** Short description explaining purpose of the branch */
+  note?: string;
+  /** Method for choosing the next unused user branch slot (defaults to the value from this class's instance) */
+  nextUnusedSlotMethod?: BrancherDBClientOptions['nextUnusedSlotMethod'];
+  parentSlot?: BranchSlot;
+};
