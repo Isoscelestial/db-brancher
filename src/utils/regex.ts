@@ -4,8 +4,8 @@ import { dev } from './templates';
 export const GitHubUsernameRegex =
   /^[a-zA-Z\d](?:[a-zA-Z\d]|-(?=[a-zA-Z\d])){0,38}$/;
 
-/** Matches the slot number of a branch's name */
-export const slotRegex = /(?<=^[^\s]*#)\d+/;
+/** Matches the slot number(s) in a branch's name */
+export const slotRegex = /(?<=^[^\s]*#[\d-]*)\d+/g;
 
 export const constructAllUserBranchesRegex = (githubUsername: string) => {
   const branchName = dev(githubUsername.toLowerCase());

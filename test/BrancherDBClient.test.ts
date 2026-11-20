@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import BrancherDBClient from '@/BrancherDBClient';
 import { neonBranchProvider } from './providers/Neon.test';
 import { UserRef } from '@/refs/UserRef';
@@ -7,7 +7,7 @@ import { Branch } from '@neon/sdk';
 describe('BrancherDBClient using Neon', () => {
   const brancher = new BrancherDBClient(neonBranchProvider);
 
-  const username = `vitest-${randomBytes(8).toString('hex')}`;
+  const username = `vitest-${randomUUID()}`;
   const u: UserRef = { githubUsername: username };
 
   test('Fetch branches', async () => {

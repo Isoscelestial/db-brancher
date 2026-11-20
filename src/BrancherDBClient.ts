@@ -3,6 +3,18 @@ import { BranchFields } from '@/refs/BranchRef';
 import { resolveUserRef, UserRef } from '@/refs/UserRef';
 import BranchProviderClient from '@/providers/BranchProviderClient';
 import { constructAllUserBranchesRegex, slotRegex } from '@/utils/regex';
+import { BranchSlot, BranchSlotSyntax } from './utils/types';
+
+const arrayStartsWith = <T>(array: T[], prefix: T[]) =>
+  array.length >= prefix.length &&
+  prefix.every((value, index) => value === array[index]);
+
+const areSlotsEqual = (slotA: BranchSlot, slotB: BranchSlot): boolean => {
+  const a = typeof slotA === 'number' ? [slotA] : slotA;
+  const b = typeof slotB === 'number' ? [slotB] : slotB;
+
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+};
 
 export type BrancherDBClientOptions = {
   /**
@@ -20,24 +32,37 @@ export type BrancherDBClientOptions = {
    * @default 'smallest'
    */
   nextUnusedSlotMethod?: 'smallest' | 'iterate';
+  /**
+   * Syntax for how to format the branch's slot in its name.
+   *
+   * - `"global"` - Uses single unique integer (e.g. `#3`)
+   * - `"nested"` - Uses multiple integers to indicate parent-child relationships, where each tier is a unique integer
+   *   (e.g. `#2-1`)
+   *
+   * @default 'nested'
+   */
+  slotSyntax?: BranchSlotSyntax;
 };
 
-export default class BrancherDBClient<BranchType extends BranchFields> {
+export default class BrancherDBClient<
+  BranchType extends BranchFields,
+  Options extends BrancherDBClientOptions = BrancherDBClientOptions,
+> {
   #providerClient: BranchProviderClient<BranchType>;
   #branchesCache: BranchType[];
   #cacheLastFetch: Date;
   #cacheInvalid: boolean;
-  #options: BrancherDBClientOptions;
+  #options: Options;
 
   constructor(
     providerClient: BranchProviderClient<BranchType>,
-    options?: BrancherDBClientOptions,
+    options?: Options,
   ) {
     this.#providerClient = providerClient;
     this.#branchesCache = [];
     this.#cacheLastFetch = new Date(0);
     this.#cacheInvalid = false;
-    this.#options = options ?? {};
+    this.#options = options ?? ({} as Options);
   }
 
   /** Internal methods that may possibly be useful. */
@@ -64,11 +89,35 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
       },
 
       /** Returns the slot number for a branch given its name */
-      getBranchSlot: (branchName: string): number => {
+      getBranchSlot: (branchName: string): BranchSlot => {
         const results = branchName.match(slotRegex);
+
         // If no result, use slot of 0 which corresponds to legacy branch
-        const slotNumber = results ? Number(results[0]) : 0;
-        return slotNumber;
+        if (!results) {
+          switch (this.#options.slotSyntax) {
+            case 'global':
+              return 0;
+            default:
+            case 'nested':
+              return [0];
+          }
+        }
+
+        const slotTiers = results.map((match) => Number(match));
+
+        if (slotTiers.length > 1 && this.#options.slotSyntax === 'global') {
+          throw new Error(
+            `Branch "${branchName}" is using nested syntax instead of configured global syntax.`,
+          );
+        }
+
+        switch (this.#options.slotSyntax) {
+          case 'global':
+            return slotTiers[slotTiers.length - 1];
+          default:
+          case 'nested':
+            return slotTiers;
+        }
       },
 
       /**
@@ -77,15 +126,15 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
        * @param userRef Target user
        * @returns An array of numbers, each corresponding to a branch slot that has been used
        */
-      getUsedSlotsForUser: async (userRef: UserRef): Promise<number[]> => {
+      getUsedSlotsForUser: async (userRef: UserRef): Promise<BranchSlot[]> => {
         const userRefObject = resolveUserRef(userRef);
         const userBranches = await this.user.getBranches(userRefObject);
 
-        const usedSlots: number[] = userBranches.reduce((acc, current) => {
-          const slotNumber = this.$util.getBranchSlot(current.name);
-          acc.push(slotNumber);
+        const usedSlots: BranchSlot[] = userBranches.reduce((acc, branch) => {
+          const branchSlot = this.$util.getBranchSlot(branch.name);
+          acc.push(branchSlot);
           return acc;
-        }, [] as number[]);
+        }, [] as BranchSlot[]);
 
         return usedSlots;
       },
@@ -94,35 +143,75 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
        * Gets the next available branch slot for a user
        *
        * @param userRef Target user
-       * @param nextUnusedSlotMethod Method for choosing the next unused user branch slot (defaults to the value from
-       *   the client instance)
+       * @param options.parentSlot Parent slot to find the next unused child slot in. Only useful if
+       *   {@linkcode BrancherDBClientOptions.slotSyntax | slotSyntax} is `"nested"`
+       * @param options.nextUnusedSlotMethod Method for choosing the next unused user branch slot (defaults to the value
+       *   from the client instance)
        * @returns A number corresponding to an unused branch slot
        */
       getNextUnusedSlotForUser: async (
         userRef: UserRef,
-        nextUnusedSlotMethod?: BrancherDBClientOptions['nextUnusedSlotMethod'],
-      ): Promise<number> => {
-        const usedSlots = await this.$util.getUsedSlotsForUser(userRef);
+        options?: {
+          parentSlot?: BranchSlot<'nested'>;
+          nextUnusedSlotMethod?: BrancherDBClientOptions['nextUnusedSlotMethod'];
+        },
+      ): Promise<BranchSlot> => {
+        const allUsedSlots = await this.$util.getUsedSlotsForUser(userRef);
         const method =
-          nextUnusedSlotMethod ??
+          options?.nextUnusedSlotMethod ??
           this.#options.nextUnusedSlotMethod ??
           'smallest';
+        const syntax = this.#options.slotSyntax ?? 'nested';
+        const parentSlot = options?.parentSlot ?? [];
+
+        if (method !== 'smallest' && method !== 'iterate') {
+          throw new Error(
+            `Invalid method for choosing next unused slot: ${method}`,
+          );
+        }
+
+        let tierUsedSlots: number[];
+
+        switch (syntax) {
+          case 'global': {
+            tierUsedSlots = allUsedSlots as BranchSlot<'global'>[];
+            break;
+          }
+
+          default:
+          case 'nested': {
+            const allNestedUsedSlots = allUsedSlots as BranchSlot<'nested'>[];
+            tierUsedSlots = allNestedUsedSlots.flatMap((slot) =>
+              arrayStartsWith(slot, parentSlot)
+                ? slot.toSpliced(0, parentSlot.length)
+                : [],
+            );
+            break;
+          }
+        }
+
+        let nextUnusedSlotForTier: number;
 
         switch (method) {
+          default:
           case 'smallest': {
             // Does not include 0 because that corresponds to legacy branch name
             let slot = 1;
-            while (usedSlots.includes(slot)) slot++;
-            return slot;
+            while (tierUsedSlots.includes(slot)) slot++;
+            nextUnusedSlotForTier = slot;
+            break;
           }
           case 'iterate': {
-            return Math.max(...usedSlots) + 1;
+            nextUnusedSlotForTier =
+              tierUsedSlots.length > 0 ? Math.max(...tierUsedSlots) + 1 : 1;
+            break;
           }
-          default:
-            throw new Error(
-              `Invalid method for choosing next unused slot: ${method}`,
-            );
         }
+
+        if (syntax === 'nested') {
+          return [...parentSlot, nextUnusedSlotForTier];
+        }
+        return nextUnusedSlotForTier;
       },
     };
   }
@@ -192,13 +281,13 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
        */
       getBranch: async (
         userRef: UserRef,
-        slot: number,
+        slot: BranchSlot,
       ): Promise<BranchType> => {
         const userBranches = await this.user.getBranches(userRef);
 
         const branch = userBranches.find((branch) => {
           const slotNumber = this.$util.getBranchSlot(branch.name);
-          return slot === slotNumber;
+          return areSlotsEqual(slot, slotNumber);
         });
 
         if (!branch) {
@@ -228,7 +317,7 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
         const githubUsername = await userRefObject.getGitHubUsername();
         const nextUnusedSlot = await this.$util.getNextUnusedSlotForUser(
           userRef,
-          nextUnusedSlotMethod,
+          { nextUnusedSlotMethod },
         );
 
         const branchName = dev(
@@ -281,7 +370,7 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
        */
       getConnectionURL: async (
         userRef: UserRef,
-        slot: number,
+        slot: BranchSlot,
       ): Promise<string> => {
         this.user.getBranches(userRef);
 
@@ -303,7 +392,7 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
        * @param userRef Target user
        * @param slot Integer corresponding to the target slot
        */
-      deleteBranch: async (userRef: UserRef, slot: number) => {
+      deleteBranch: async (userRef: UserRef, slot: BranchSlot) => {
         this.user.getBranches(userRef);
 
         const targetBranch = await this.user.getBranch(userRef, slot);
@@ -314,7 +403,7 @@ export default class BrancherDBClient<BranchType extends BranchFields> {
         return await this.branch.$raw.delete({ id: targetBranch.id });
       },
 
-      resetBranchFromParent: async (userRef: UserRef, slot: number) => {
+      resetBranchFromParent: async (userRef: UserRef, slot: BranchSlot) => {
         const targetBranch = await this.user.getBranch(userRef, slot);
         if (!targetBranch) {
           throw new Error(`Could not find branch at slot ${slot}`);

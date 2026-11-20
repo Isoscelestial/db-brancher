@@ -1,3 +1,5 @@
+import { BranchSlot } from './types';
+
 /**
  * Constructs the branch name belonging to a particular GitHub username
  *
@@ -9,17 +11,19 @@
  */
 export function dev(
   githubUsername: string,
-  slot?: number,
+  slot?: BranchSlot,
   note?: string,
 ): string {
-  if (slot && (!Number.isInteger(slot) || slot < 0)) {
-    throw new Error('Invalid slot for branch name');
+  const tiers = typeof slot === 'number' ? [slot] : slot;
+
+  if (tiers && !tiers?.every((tier) => Number.isInteger(tier) && tier >= 0)) {
+    throw new Error(`Invalid slot ${slot} for branch name`);
   }
 
   // Wildcard branch, or legacy branch name
-  if (!slot || slot === 0) return `dev/${githubUsername}`;
+  if (!tiers || tiers[0] === 0) return `dev/${githubUsername}`;
 
-  return `dev/${githubUsername}#${slot}${note ? ` ${note}` : ''}`;
+  return `dev/${githubUsername}#${tiers.join('-')}${note ? ` ${note}` : ''}`;
 }
 
 /** Constructs a branch name based off a GitHub branch. */
