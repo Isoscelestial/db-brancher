@@ -28,38 +28,17 @@ jobs:
       - name: Check types
         run: node --run type:check
 
-  get-matrix:
-    # Automatically pick active LTS versions
-    runs-on: ubuntu-latest
-    outputs:
-      latest: ${{ steps.set-matrix.outputs.requireds }}
-    steps:
-      - uses: ljharb/actions/node/matrix@main
-        id: set-matrix
-        with:
-          versionsAsRoot: true
-          type: majors
-          preset: '>= 22' # glob is not backported below 22.x
-
   test:
     name: Run tests
-    needs: [get-matrix]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     environment: CI
-
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: ${{ fromJson(needs.get-matrix.outputs.latest) }}
-        os:
-          - ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
-      - name: Use node ${{ matrix.node-version }}
+      - name: Use node 22
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: '22'
           cache: 'npm'
       - name: npm clean install
         run: npm ci
